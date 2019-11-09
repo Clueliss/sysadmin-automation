@@ -1,0 +1,9 @@
+[Unit]
+Description=weekly timer for zfs scrub
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+
+[Install]
+WantedBy=multi-user.target

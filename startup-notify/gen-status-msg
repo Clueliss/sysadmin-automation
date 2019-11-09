@@ -1,0 +1,19 @@
+#!/bin/bash
+
+echo "server $(cat /etc/hostname) is now online:"
+systemd-analyze | sed 's/^/  /g'
+
+
+echo ""
+echo "zpool0 status:"
+
+zpool status | grep -E "state|errors" | sed 's/^[[:space:]]*/  /g'
+
+echo "  mounted: $(zfs get -o value mounted zpool0 | grep -E 'yes|no')"
+
+
+echo ""
+echo "following systemd units failed to start:"
+
+systemctl --failed | sed 's/^/  /g'
+

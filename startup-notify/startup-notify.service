@@ -1,0 +1,10 @@
+[Unit]
+Description=pushbullet startup notification
+After=network-online.target zfs-import.target zfs-mount.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c "/usr/local/bin/pb push \"$(/usr/bin/gen-status-msg)\"" 
+
+[Install]
+WantedBy=multi-user.target
