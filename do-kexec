@@ -1,0 +1,80 @@
+#!/bin/bash
+
+function print_choices {
+    local choices="$1"
+    echo "$choices" | cat -n
+}
+
+function choose_prompt {
+    local msg="$1"
+    local choices="$2"
+
+    read -p "$msg" chosen_idx
+
+    local chosen=$(echo "$choices" | sed -n "${chosen_idx}p")
+
+    if [[ "$chosen" == "" ]]; then
+        echo ""
+    else
+        echo "$chosen"
+    fi
+}
+
+
+# get vmlinuz and initramfs files
+
+vmlinuz_choices="$(/bin/ls /boot | grep vmlinuz)"
+initramfs_choices="$(/bin/ls /boot | grep initramfs)"
+
+if [[ "$vmlinuz_choices" == "" ]]; then
+    echo "Could not find any vmlinuz files."
+    exit 1
+fi
+
+if [[ "$initramfs_choices" == "" ]]; then
+    echo "Could not find any initramfs files."
+    exit 2
+fi
+
+
+
+# get desired vmlinuz
+
+print_choices "$vmlinuz_choices"
+vmlinuz_chosen=$(choose_prompt "choose vmlinuz: " "$vmlinuz_choices")
+
+if [[ "$vmlinuz_chosen" == "" ]]; then
+    echo "Invalid choice"
+    exit 3
+fi
+
+
+echo "You chose $vmlinuz_chosen."
+echo
+
+
+# get desired initramfs
+
+print_choices "$initramfs_choices"
+initramfs_chosen=$(choose_prompt "choose initramfs: " "$initramfs_choices")
+
+echo "You chose $initramfs_chosen."
+echo ""
+
+
+# initialize kexec
+
+kexec -u
+kexec -l "/boot/${vmlinuz_chosen}" --initrd="/boot/${initramfs_chosen}" && echo "kexec initialized"
+
+
+# conditionally do kexec
+
+read -p "Do you want kexec right now (y/n)? " do_kexec
+
+if [[ $do_kexec =~ ^[Yy]$ ]]; then
+    systemctl kexec
+else
+    echo "Not doing kexec right now."
+fi
+
