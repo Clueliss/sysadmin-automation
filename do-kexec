@@ -16,6 +16,7 @@ function choose_prompt {
     if [[ "$chosen" == "" ]]; then
         echo ""
     else
+        echo "$chosen_idx"
         echo "$chosen"
     fi
 }
@@ -41,7 +42,11 @@ fi
 # get desired vmlinuz
 
 print_choices "$vmlinuz_choices"
-vmlinuz_chosen=$(choose_prompt "choose vmlinuz: " "$vmlinuz_choices")
+vmlinuz_chosen_and_idx=$(choose_prompt "choose vmlinuz: " "$vmlinuz_choices")
+
+vmlinuz_chosen=$(echo "$vmlinuz_chosen_and_idx" | head -n1)
+vmlinuz_chosen_idx=$(echo "$vmlinuz_chosen_and_idx" | tail -n1)
+
 
 if [[ "$vmlinuz_chosen" == "" ]]; then
     echo "Invalid choice"
@@ -56,7 +61,12 @@ echo
 # get desired initramfs
 
 print_choices "$initramfs_choices"
-initramfs_chosen=$(choose_prompt "choose initramfs: " "$initramfs_choices")
+initramfs_chosen=$(choose_prompt "choose initramfs (default $vmlinuz_chosen): " "$initramfs_choices" | tail -n1)
+
+if [[ "$initramfs_chosen" == "" ]]; then
+    initramfs_chosen="$vmlinuz_chosen"
+fi
+
 
 echo "You chose $initramfs_chosen."
 echo ""
