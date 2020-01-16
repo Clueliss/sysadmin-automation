@@ -1,0 +1,8 @@
+[Unit]
+Description=Timer for google-drive sync
+
+[Timer]
+OnCalendar=daily
+
+[Install]
+WantedBy=timers.target

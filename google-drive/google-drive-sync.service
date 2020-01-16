@@ -1,0 +1,7 @@
+[Unit]
+Description=Sync lissheidr google drive to /mnt/zpool0/home/liss/google_drive
+
+[Service]
+WorkingDirectory=/mnt/zpool0/home/liss/google_drive
+Type=oneshot
+ExecStart=drive-google pull
