@@ -4,7 +4,7 @@ Before=docker.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/docker-fix
+ExecStart=/usr/bin/fix-docker
 
 [Install]
 WantedBy=multi-user.target
