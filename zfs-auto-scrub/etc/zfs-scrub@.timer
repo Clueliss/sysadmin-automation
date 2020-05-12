@@ -1,5 +1,5 @@
 [Unit]
-Description=weekly timer for zfs scrub
+Description=weekly timer for zfs for %i
 
 [Timer]
 OnCalendar=weekly

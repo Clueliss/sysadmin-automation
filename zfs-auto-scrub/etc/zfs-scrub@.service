@@ -1,0 +1,6 @@
+[Unit]
+Description=scrub zfs pool %i
+
+[Service]
+Type=oneshot
+ExecStart=zpool scrub %i

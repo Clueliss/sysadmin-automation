@@ -4,7 +4,7 @@ After=network-online.target zfs-import.target zfs-mount.service
 
 [Service]
 Type=idle
-ExecStart=/bin/bash -c "/usr/local/bin/pb push \"$(/usr/bin/gen-status-msg)\"" 
+ExecStart=/bin/bash -c "/usr/local/bin/pb push \"$(/usr/local/sbin/gen-status-msg)\"" 
 
 [Install]
 WantedBy=multi-user.target

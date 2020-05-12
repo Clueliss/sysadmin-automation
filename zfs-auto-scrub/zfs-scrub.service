@@ -1,6 +1,0 @@
-[Unit]
-Description=scrub zpool0
-
-[Service]
-Type=oneshot
-ExecStart=zpool scrub zpool0
