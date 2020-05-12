@@ -5,7 +5,7 @@ install:
 	install etc/startup-notify.service /etc/systemd/system
 
 	install -d /usr/local/sbin
-	install src/gen-status-msg /usr/local/sbin/gen-status-msg
+	install src/gen-status-msg.sh /usr/local/sbin/gen-status-msg
 
 uninstall:
 	systemctl disable startup-notify.service --now
