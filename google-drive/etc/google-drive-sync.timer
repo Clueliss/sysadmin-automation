@@ -1,5 +1,7 @@
 [Unit]
 Description=Timer for google-drive sync
+Requires=mnt-zpool0-home-liss-google_drive.mount
+After=mnt-zpool0-home-liss-google_drive.mount
 
 [Timer]
 OnCalendar=daily
