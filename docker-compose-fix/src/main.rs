@@ -1,19 +1,18 @@
 #![feature(with_options)]
 #![feature(array_value_iter)]
 
-extern crate getopts;
+extern crate regex;
 extern crate serde;
 extern crate serde_yaml;
 
+use std::collections::HashSet;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use getopts::{Options, Occur, HasArg, ParsingStyle};
+use regex::Regex;
 use serde::ser::Error as _;
 use serde_yaml as yaml;
-use std::process::Command;
-use regex::Regex;
-use std::collections::HashSet;
 
 fn find_docker_compose_file() -> Option<&'static Path> {
     let variant1 = Path::new("./docker-compose.yml");
@@ -86,7 +85,7 @@ fn find_docker_args() -> Result<HashSet<String>, Box<dyn std::error::Error>> {
 
     let lines = output.lines();
 
-    let re = Regex::new("^  (--?[A-Za-z-]+)(, (--?[A-Za-z-]+))? [A-Z_]+").unwrap();
+    let re = Regex::new("^\\s+(--?[A-Za-z-]+)(, (--?[A-Za-z-]+))? [A-Z_]+").unwrap();
 
     let found_args = lines
         .flat_map(|l| re.captures_iter(l))
@@ -105,7 +104,7 @@ fn find_docker_args() -> Result<HashSet<String>, Box<dyn std::error::Error>> {
 
 fn find_docker_compose_subcommands() -> Result<HashSet<String>, Box<dyn std::error::Error>> {
 
-    let re = Regex::new("^  ([a-zA-Z]+)").unwrap();
+    let re = Regex::new("^\\s+([a-zA-Z]+)").unwrap();
 
     let output = String::from_utf8(
         Command::new("docker-compose")
@@ -113,8 +112,9 @@ fn find_docker_compose_subcommands() -> Result<HashSet<String>, Box<dyn std::err
             .output()?
             .stdout)?;
 
-    let lines = output.lines();
-
+    let lines = output.lines()
+        .rev()
+        .take_while(|l| *l != "Commands:");
 
     let found_subcommands = lines
         .flat_map(|l| re.captures_iter(l))

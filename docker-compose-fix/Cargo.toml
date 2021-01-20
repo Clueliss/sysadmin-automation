@@ -9,5 +9,4 @@ edition = "2018"
 [dependencies]
 serde = "1.0.120"
 serde_yaml = "0.8.15"
-getopts = "0.2.21"
 regex = "1"
