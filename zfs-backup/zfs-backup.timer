@@ -1,0 +1,8 @@
+[Unit]
+Description=timer to backup zfs pool 
+
+[Timer]
+OnCalendar=weekly
+
+[Install]
+WantedBy=timer.target
