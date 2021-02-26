@@ -1,5 +1,3 @@
-all:
-
 install:
 	install -d /etc/systemd/system
 	install etc/startup-notify.service /etc/systemd/system

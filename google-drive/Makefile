@@ -1,5 +1,3 @@
-all:
-
 install:
 	dnf copr enable vaughan/drive-google -y
 	dnf install drive-google -y
