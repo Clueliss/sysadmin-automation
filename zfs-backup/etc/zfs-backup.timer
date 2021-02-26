@@ -5,4 +5,4 @@ Description=timer to backup zfs pool
 OnCalendar=weekly
 
 [Install]
-WantedBy=timer.target
+WantedBy=timers.target

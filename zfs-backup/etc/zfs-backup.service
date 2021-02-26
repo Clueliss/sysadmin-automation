@@ -1,5 +1,5 @@
 [Unit]
-Description=backups zfs pool onto remote
+Description=backup zfs pool onto remote
 
 [Service]
 ExecStart=/usr/local/bin/zfs-backup.sh
