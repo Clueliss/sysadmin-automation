@@ -30,7 +30,7 @@ sync() {
     echo "using local base: '$rlsnap'"
 
     if [[ $rsnap != "" ]]; then
-        zfs send -I "$rlsnap" "$lsnap" | ssh "$REMOTE_USER@$REMOTE_IP" zfs recv "$REMOTE_POOL/$fs"
+        zfs send -I "$rlsnap" "$lsnap" | ssh "$REMOTE_USER@$REMOTE_IP" zfs recv -F "$REMOTE_POOL/$fs"
     else
         zfs send "$lsnap" | ssh "$REMOTE_USER@$REMOTE_IP" zfs recv "$REMOTE_POOL/$fs"
     fi
