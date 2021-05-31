@@ -1,5 +1,7 @@
 [Unit]
 Description=timer to backup zfs pool 
+Requires=zfs.target
+After=zfs.target
 
 [Timer]
 OnCalendar=weekly
