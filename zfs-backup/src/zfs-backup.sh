@@ -1,75 +1,96 @@
 #!/bin/bash
 
-REMOTE_IP="192.168.0.5"
-REMOTE_MAC="00:1c:c0:1e:77:49"
-REMOTE_USER="root"
-LOCAL_POOL="pool0"
-REMOTE_POOL="backup0"
-DATASETS=("home/liss" "home/liss/google_drive" "home/claudia" "home/rolf" "pictures" "vm/docker/cache-backup")
+set -euo pipefail
 
+REMOTE_IP=""
+REMOTE_MAC=""
+LOCAL_POOL="nand0"
+REMOTE_POOL="pool0"
+REMOTE_FS_PREFIX="received"
+DATASETS=("home" "container")
+
+
+REMOTE_FS_BASE="${REMOTE_POOL}/${REMOTE_FS_PREFIX}"
 
 latest_local_snapshot() {
     local fs="$1"
-    zfs list -t snapshot -o name,creation | grep "$LOCAL_POOL/$fs@" | tail -n1 | awk '{ print $1 }'
+    zfs list -t snapshot -o name "$LOCAL_POOL/$fs" | tail -n+2 | tail -n1
 }
 
 latest_remote_snapshot() {
     local fs="$1"
-    ssh "$REMOTE_USER@$REMOTE_IP" "zfs list -t snapshot -o name,creation" | grep "$REMOTE_POOL/$fs@" | tail -n1 | awk '{ print $1 }'
+
+    if [[ $REMOTE_IP == "localhost" ]]; then
+        zfs list -t snapshot -o name "$REMOTE_FS_BASE/$fs"
+    else
+        ssh root@$REMOTE_IP zfs list -t snapshot -o name "$REMOTE_FS_BASE/$fs"
+    fi | tail -n+2 | tail -n1
+}
+
+local_fs_has_children() {
+    local fs="$1"
+
+    [[ $(zfs list -t filesystem -o name | grep --count "$LOCAL_POOL/$fs") -gt 1 ]]
+    return $?
 }
 
 sync() {
     local fs="$1"
     local lsnap=$(latest_local_snapshot "$fs")
     local rsnap=$(latest_remote_snapshot "$fs")
-    local rlsnap=$(echo $rsnap | sed "s|$REMOTE_POOL/|$LOCAL_POOL/|")
+    local rlsnap=${rsnap/${REMOTE_FS_BASE}/${LOCAL_POOL}}
 
-    echo "syncing $fs..."
-    echo "latest on local:  '$lsnap'"
-    echo "latest on remote: '$rsnap'"
-    echo "using local base: '$rlsnap'"
+    echo "<6>syncing $fs..."
+    echo "<7>latest on local:  '$lsnap'"
+    echo "<7>latest on remote: '$rsnap'"
+    echo "<7>using local base: '$rlsnap'"
 
-    if [[ $rsnap != "" ]]; then
-        zfs send -I "$rlsnap" "$lsnap" | ssh "$REMOTE_USER@$REMOTE_IP" zfs recv -F "$REMOTE_POOL/$fs"
+    local additional_send_args=""
+
+    if local_fs_has_children $fs; then
+        additional_send_args="${additional_send_args} -R"
+    fi
+
+    if [[ -n $rsnap ]]; then
+        additional_send_args="${additional_send_args} -I ${rlsnap}"
+    fi
+
+    echo "<7>additional send args: ${additional_send_args}"
+
+    zfs send -b ${additional_send_args} "$lsnap" | if [[ $REMOTE_IP == "localhost" ]]; then
+        zfs recv -vud "$REMOTE_FS_BASE"
     else
-        zfs send "$lsnap" | ssh "$REMOTE_USER@$REMOTE_IP" zfs recv "$REMOTE_POOL/$fs"
+        ssh root@$REMOTE_IP zfs recv -vud "$REMOTE_FS_BASE"
     fi
 
     return $?
 }
 
-try_wake_up() {
-    wol "$REMOTE_MAC"
+wake_remote() {
+    wol $REMOTE_MAC
+
     for _ in {1..5}; do
-        if ping -c 1 "$REMOTE_IP"; then
+        if ping -c 1 $REMOTE_IP; then
             return 0
+            break
         fi
         sleep 120
     done
-
     return 1
 }
 
-ping -c 1 "$REMOTE_IP"
-init_ping_success=$?
+if [[ $REMOTE_IP == "localhost" ]] || wake_remote; then
+    for ds in "${DATASETS[@]}"; do
+        sync "$ds"
+    done
 
-if [[ $init_ping_success != 0 ]]; then
-    # server not online, try to bring up
+    echo "<6>backup completed, shutting down remote"
 
-    if ! try_wake_up; then
-        echo "failed to bring up remote"
-        pb push "failed to bring up remote backup server"
-        exit 1
+    if [[ $REMOTE_IP != "localhost" ]]; then
+        ssh root@$REMOTE_IP "systemctl hibernate"
     fi
-fi
-
-
-for ds in "${DATASETS[@]}"; do
-    sync "$ds"
-done
-
-echo "backup completed, shutting down remote"
-
-if [[ $was_online != 0 ]]; then
-    ssh "$REMOTE_USER@$REMOTE_IP" "systemctl hibernate"
+    exit 0
+else
+    echo "<3>failed to bring up backup server"
+    exit 1
 fi

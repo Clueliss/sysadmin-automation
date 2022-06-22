@@ -4,7 +4,7 @@ Requires=zfs.target
 After=zfs.target
 
 [Service]
-ExecStart=/usr/local/bin/zfs-backup.sh
+ExecStart=/usr/local/sbin/zfs-backup
 
 [Install]
 WantedBy=multi-user.target

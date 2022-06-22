@@ -3,9 +3,8 @@ install:
 	install etc/zfs-backup.service /etc/systemd/system
 	install etc/zfs-backup.timer /etc/systemd/system
 
-	install -d /usr/local/bin
-	install src/zfs-backup.sh /usr/local/bin
-	chmod +x /usr/local/bin/zfs-backup.sh
+	install -d /usr/local/sbin
+	install src/zfs-backup.sh /usr/local/sbin/zfs-backup
 
 uninstall:
 	systemctl disable zfs-backup.timer --now
@@ -13,4 +12,4 @@ uninstall:
 
 	rm /etc/systemd/system/zfs-backup.service
 	rm /etc/systemd/system/zfs-backup.timer
-	rm /usr/local/bin/zfs-backup.sh
+	rm /usr/local/sbin/zfs-backup
