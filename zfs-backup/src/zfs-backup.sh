@@ -1,30 +1,31 @@
 #!/bin/bash
 
-set -euo pipefail
+set -uo pipefail
 
-REMOTE_IP=""
-REMOTE_MAC=""
-LOCAL_POOL="nand0"
-REMOTE_POOL="pool0"
-REMOTE_FS_PREFIX="received"
-DATASETS=("home" "container")
-
+source /etc/zfs-backup.conf
 
 REMOTE_FS_BASE="${REMOTE_POOL}/${REMOTE_FS_PREFIX}"
 
-latest_local_snapshot() {
+list_local_snapshots() {
     local fs="$1"
-    zfs list -t snapshot -o name "$LOCAL_POOL/$fs" | tail -n+2 | tail -n1
+    zfs list -t snapshot -o name "$LOCAL_POOL/$fs" | tail -n+2 | grep -E "$SNAPSHOT_PATTERN"
 }
 
-latest_remote_snapshot() {
+list_remote_snapshots() {
     local fs="$1"
 
     if [[ $REMOTE_IP == "localhost" ]]; then
         zfs list -t snapshot -o name "$REMOTE_FS_BASE/$fs"
     else
         ssh root@$REMOTE_IP zfs list -t snapshot -o name "$REMOTE_FS_BASE/$fs"
-    fi | tail -n+2 | tail -n1
+    fi | tail -n+2 | grep -E "$SNAPSHOT_PATTERN"
+}
+
+latest_common_snapshot() {
+    local local_snapshots="$1"
+    local remote_snapshots="$2"
+
+    grep -x -f <(echo "$local_snapshots" | sed "s|$LOCAL_POOL/||") <(echo "$remote_snapshots" | sed "s|$REMOTE_FS_BASE/||") | tail -n1
 }
 
 local_fs_has_children() {
@@ -36,34 +37,56 @@ local_fs_has_children() {
 
 sync() {
     local fs="$1"
-    local lsnap=$(latest_local_snapshot "$fs")
-    local rsnap=$(latest_remote_snapshot "$fs")
-    local rlsnap=${rsnap/${REMOTE_FS_BASE}/${LOCAL_POOL}}
 
-    echo "<6>syncing $fs..."
-    echo "<7>latest on local:  '$lsnap'"
-    echo "<7>latest on remote: '$rsnap'"
-    echo "<7>using local base: '$rlsnap'"
+    local local_snaps=$(list_local_snapshots "$fs")
+    local remote_snaps=$(list_remote_snapshots "$fs")
 
-    local additional_send_args=""
+    local latest_common_snap=$(latest_common_snapshot "$local_snaps" "$remote_snaps")
 
-    if local_fs_has_children $fs; then
-        additional_send_args="${additional_send_args} -R"
-    fi
+    echo "<6>beginning sync of filesystem $fs"
+    echo "<7>latest snapshot on local:  '$(echo "$local_snaps" | tail -n1)'"
+    echo "<7>latest snapshot on remote: '$(echo "$remote_snaps" | tail -n1)'"
+    echo "<7>latest common snapshot:    '$latest_common_snap'"
 
-    if [[ -n $rsnap ]]; then
-        additional_send_args="${additional_send_args} -I ${rlsnap}"
-    fi
-
-    echo "<7>additional send args: ${additional_send_args}"
-
-    zfs send -b ${additional_send_args} "$lsnap" | if [[ $REMOTE_IP == "localhost" ]]; then
-        zfs recv -vud "$REMOTE_FS_BASE"
+    if [[ -n $latest_common_snap ]]; then
+        local base_arg="-i $LOCAL_POOL/$latest_common_snap"
+        local to_send=$(echo "$local_snaps" | sed "0,\|$latest_common_snap|d")
     else
-        ssh root@$REMOTE_IP zfs recv -vud "$REMOTE_FS_BASE"
+        local base_arg=""
+        local to_send=$local_snaps
     fi
 
-    return $?
+    if [[ -z $to_send ]]; then
+        echo "<6>no snapshots to send, skipping filesystem $fs"
+        return 0
+    fi
+
+    if local_fs_has_children "$fs"; then
+        local recursive_arg="-R"
+        echo "<7>sending recursively"
+    else
+        local recursive_arg=""
+    fi
+
+    for snap in $to_send; do
+        echo "<7>sending snapshot $snap with args: $recursive_arg $base_arg"
+
+        zfs send -b $recursive_arg $base_arg "$snap" | if [[ $REMOTE_IP == "localhost" ]]; then
+            zfs recv -vud "$REMOTE_FS_BASE"
+        else
+            ssh root@$REMOTE_IP zfs recv -vud "$REMOTE_FS_BASE"
+        fi
+
+        if [[ $? -ne 0 ]]; then
+            echo "<4>send error, sync of filesystem $fs failed"
+            return 1
+        fi
+
+        base_arg="-i $snap"
+    done
+
+    echo "<6>sync of filesystem $fs successful"
+    return 0
 }
 
 wake_remote() {
