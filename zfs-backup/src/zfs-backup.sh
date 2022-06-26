@@ -90,19 +90,20 @@ sync() {
 }
 
 wake_remote() {
+    echo "<7>attempting to wake remote"
     wol $REMOTE_MAC
 
     for _ in {1..5}; do
+        sleep 120
         if ping -c 1 $REMOTE_IP; then
             return 0
             break
         fi
-        sleep 120
     done
     return 1
 }
 
-if [[ $REMOTE_IP == "localhost" ]] || wake_remote; then
+if [[ $REMOTE_IP == "localhost" ]] || ping -c 1 $REMOTE_IP || wake_remote; then
     for ds in "${DATASETS[@]}"; do
         sync "$ds"
     done
@@ -114,6 +115,6 @@ if [[ $REMOTE_IP == "localhost" ]] || wake_remote; then
     fi
     exit 0
 else
-    echo "<3>failed to bring up backup server"
+    echo "<3>failed to bring up remote"
     exit 1
 fi
