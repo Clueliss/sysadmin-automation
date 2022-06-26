@@ -1,13 +1,14 @@
 [Unit]
 Description=%I podman container
-Wants=syslog.service
 Requires=network.target
 After=network.target
 
 [Service]
 Type=forking
-Restart=always
-WorkingDirectory=/var/containers/%i
+Restart=on-abnormal
+WorkingDirectory=/etc/container/%i
+Environment=DATA_PREFIX=/var/lib/container/%i
+Environment=SOURCE_PREFIX=/usr/local/src/container/%i
 
 ExecStart=/usr/bin/podman-compose up --force-recreate -d
 ExecStartPost=/usr/local/bin/podman-change-zone -c %i
