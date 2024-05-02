@@ -1,8 +1,0 @@
-[Unit]
-Description=backup of /var/containers to /mnt/zpool0/vm/docker/cache-backup
-Requires=mnt-zpool0-vm-docker.mount
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/rsync -a --no-D /var/containers/ /mnt/zpool0/vm/docker/cache-backup
-ExecStartPost=rclone copy /mnt/zpool0/vm/docker/cache-backup/ StdGoogleDrive:/Backups/podman/
